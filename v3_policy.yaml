@@ -1,0 +1,116 @@
+[1m[36mSandbox:[39m[0m
+
+  [2mId:[0m cd0c070d-e0ab-40f9-8111-22b0180e8ccf
+  [2mName:[0m my-assistant-v3
+  [2mNamespace:[0m openshell
+  [2mPhase:[0m Ready
+
+[1m[36mPolicy:[39m[0m
+
+  [2mversion[0m[2m:[0m 1
+  [2mfilesystem_policy[0m[2m:[0m
+    [2minclude_workdir[0m[2m:[0m true
+    [2mread_only[0m[2m:[0m
+    [2m- [0m/usr
+    [2m- [0m/lib
+    [2m- [0m/proc
+    [2m- [0m/dev/urandom
+    [2m- [0m/app
+    [2m- [0m/etc
+    [2m- [0m/var/log
+    [2mread_write[0m[2m:[0m
+    [2m- [0m/sandbox
+    [2m- [0m/tmp
+    [2m- [0m/dev/null
+  [2mlandlock[0m[2m:[0m
+    [2mcompatibility[0m[2m:[0m best_effort
+  [2mprocess[0m[2m:[0m
+    [2mrun_as_user[0m[2m:[0m sandbox
+    [2mrun_as_group[0m[2m:[0m sandbox
+  [2mnetwork_policies[0m[2m:[0m
+    [2mclaude_code[0m[2m:[0m
+      [2mname[0m[2m:[0m claude_code
+      [2mendpoints[0m[2m:[0m
+      [2m- [0mhost: api.anthropic.com
+        [2mport[0m[2m:[0m 443
+        [2mprotocol[0m[2m:[0m rest
+        [2mtls[0m[2m:[0m terminate
+        [2menforcement[0m[2m:[0m enforce
+        [2maccess[0m[2m:[0m full
+      [2m- [0mhost: statsig.anthropic.com
+        [2mport[0m[2m:[0m 443
+      [2m- [0mhost: sentry.io
+        [2mport[0m[2m:[0m 443
+      [2m- [0mhost: raw.githubusercontent.com
+        [2mport[0m[2m:[0m 443
+      [2m- [0mhost: platform.claude.com
+        [2mport[0m[2m:[0m 443
+      [2mbinaries[0m[2m:[0m
+      [2m- [0mpath: /usr/local/bin/claude
+      [2m- [0mpath: /usr/bin/node
+    [2mgithub[0m[2m:[0m
+      [2mname[0m[2m:[0m github
+      [2mendpoints[0m[2m:[0m
+      [2m- [0mhost: github.com
+        [2mport[0m[2m:[0m 443
+        [2mprotocol[0m[2m:[0m rest
+        [2mtls[0m[2m:[0m terminate
+        [2menforcement[0m[2m:[0m enforce
+        [2mrules[0m[2m:[0m
+        [2m- [0mallow:
+            [2mmethod[0m[2m:[0m GET
+            [2mpath[0m[2m:[0m /**/info/refs*
+        [2m- [0mallow:
+            [2mmethod[0m[2m:[0m POST
+            [2mpath[0m[2m:[0m /**/git-upload-pack
+      [2mbinaries[0m[2m:[0m
+      [2m- [0mpath: /usr/bin/git
+    [2mgithub_rest_api[0m[2m:[0m
+      [2mname[0m[2m:[0m github-rest-api
+      [2mendpoints[0m[2m:[0m
+      [2m- [0mhost: api.github.com
+        [2mport[0m[2m:[0m 443
+        [2mprotocol[0m[2m:[0m rest
+        [2mtls[0m[2m:[0m terminate
+        [2menforcement[0m[2m:[0m enforce
+        [2mrules[0m[2m:[0m
+        [2m- [0mallow:
+            [2mmethod[0m[2m:[0m GET
+            [2mpath[0m[2m:[0m /**
+        [2m- [0mallow:
+            [2mmethod[0m[2m:[0m HEAD
+            [2mpath[0m[2m:[0m /**
+        [2m- [0mallow:
+            [2mmethod[0m[2m:[0m OPTIONS
+            [2mpath[0m[2m:[0m /**
+      [2mbinaries[0m[2m:[0m
+      [2m- [0mpath: /usr/local/bin/claude
+      [2m- [0mpath: /usr/bin/gh
+    [2mgitlab[0m[2m:[0m
+      [2mname[0m[2m:[0m gitlab
+      [2mendpoints[0m[2m:[0m
+      [2m- [0mhost: gitlab.com
+        [2mport[0m[2m:[0m 443
+      [2m- [0mhost: gitlab.mycorp.com
+        [2mport[0m[2m:[0m 443
+      [2mbinaries[0m[2m:[0m
+      [2m- [0mpath: /usr/bin/glab
+    [2mnvidia[0m[2m:[0m
+      [2mname[0m[2m:[0m nvidia
+      [2mendpoints[0m[2m:[0m
+      [2m- [0mhost: integrate.api.nvidia.com
+        [2mport[0m[2m:[0m 443
+      [2mbinaries[0m[2m:[0m
+      [2m- [0mpath: /usr/bin/curl
+      [2m- [0mpath: /bin/bash
+      [2m- [0mpath: /usr/bin/node
+      [2m- [0mpath: /usr/local/bin/opencode
+    [2mnvidia_web[0m[2m:[0m
+      [2mname[0m[2m:[0m nvidia_web
+      [2mendpoints[0m[2m:[0m
+      [2m- [0mhost: nvidia.com
+        [2mport[0m[2m:[0m 443
+      [2m- [0mhost: www.nvidia.com
+        [2mport[0m[2m:[0m 443
+      [2mbinaries[0m[2m:[0m
+      [2m- [0mpath: /usr/bin/curl

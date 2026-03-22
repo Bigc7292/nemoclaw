@@ -1,0 +1,9 @@
+version: 1
+network_policies:
+  allow_all:
+    name: allow_all
+    endpoints:
+      - host: "*"
+        port: "*"
+        protocol: "*"
+        enforcement: bypass

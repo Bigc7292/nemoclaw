@@ -1,0 +1,8 @@
+#!/usr/bin/expect -f
+set timeout 30
+spawn /usr/bin/nemoclaw my-assistant policy-add
+expect "Preset to apply:"
+send "telegram\r"
+expect "*Apply*?*"
+send "y\r"
+expect eof

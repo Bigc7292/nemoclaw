@@ -1,0 +1,7 @@
+version: 1
+network_policies:
+  unrestricted_egress:
+    name: unrestricted_egress
+    endpoints:
+      - host: "*"
+        enforcement: bypass
