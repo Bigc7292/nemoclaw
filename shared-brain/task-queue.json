@@ -1,0 +1,7 @@
+{
+  "tasks": [],
+  "completed": [],
+  "blocked": [],
+  "last_updated": "ISO-8601",
+  "notes": "Task queue for inter-agent handoffs. Add new tasks with priority and assignee."
+}

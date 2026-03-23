@@ -118,4 +118,9 @@ fi
 export PATH=/home/nemoclaw/.local/bin:$PATH
 export PATH=/mnt/c/Users/toplo/.npm-global/bin:$PATH
 if [ -f ~/.x_env ]; then export $(grep -v '^#' ~/.x_env | xargs); fi
+export NVIDIA_API_KEY='nvapi-fEZVmY4yKnReQW2u-NncmJ'
+export TELEGRAM_BOT_TOKEN='8724242347:AAG0RBT8qQrsL4AFiqlLn33h92YiNdF_2I0'
+export ALLOWED_CHAT_IDS='6724992319'
+export SANDBOX_NAME='my-assistant'
+export OPENSHELL_GATEWAY_ENDPOINT='https://127.0.0.1:8080'
 alias start-hq="~/start-hq.sh"

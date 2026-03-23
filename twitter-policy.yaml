@@ -1,0 +1,30 @@
+network_policies:
+  twitter:
+    name: twitter
+    endpoints:
+      - host: api.twitter.com
+        port: 443
+        protocol: rest
+        tls: terminate
+        enforcement: enforce
+        rules:
+          - m allow:
+              method: '*'
+              path: /**
+      - host: stream.twitter.com
+        port: 443
+        protocol: rest
+        tls: terminate
+        enforcement: enforce
+        rules:
+          - m allow:
+              method: '*'
+              path: /**
+      - host: absolutenate.twitter.com
+        port: 443
+      - host: upload.twitter.com
+        port: 443
+    binaries:
+      - path: /usr/bin/curl
+      - path: /usr/bin/node
+      - path: /usr/local/bin/openclaw
