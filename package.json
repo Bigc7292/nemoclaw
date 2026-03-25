@@ -1,0 +1,26 @@
+{
+  "name": "ceo-chief-hq",
+  "version": "1.0.0",
+  "description": "CEO-Chief AI HQ — Cloud-Native Telegram Bridge powered by NVIDIA NIM",
+  "main": "cloud-bridge.js",
+  "scripts": {
+    "start": "node cloud-bridge.js",
+    "dev": "node cloud-bridge.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "openai": "^4.67.0"
+  },
+  "keywords": [
+    "telegram",
+    "nvidia",
+    "nim",
+    "ai",
+    "bot",
+    "nemoclaw"
+  ],
+  "author": "CEO-Chief HQ",
+  "license": "Apache-2.0"
+}
