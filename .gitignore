@@ -13,6 +13,7 @@ build/
 .env
 .env.*
 !.env.example
+.hq.env
 
 # IDE files
 .vscode/
@@ -29,6 +30,7 @@ Thumbs.db
 *.temp
 .cache/
 
-# Sensitive files (auto-detected)
+# Sensitive files
 credentials.json
-
+bashrc.txt
+start-hq.sh
