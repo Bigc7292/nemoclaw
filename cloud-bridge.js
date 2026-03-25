@@ -10,37 +10,69 @@
 //    ALLOWED_CHAT_IDS     — comma-separated chat IDs (optional)
 //    MODEL                — override NVIDIA NIM model (optional)
 //    MAX_HISTORY          — messages to keep per session (default 20)
+//    X_CONSUMER_KEY       — Twitter/X API consumer key
+//    X_CONSUMER_SECRET    — Twitter/X API consumer secret
+//    X_BEARER_TOKEN       — Twitter/X API bearer token
+//    X_ACCESS_TOKEN       — Twitter/X API access token
+//    X_ACCESS_TOKEN_SECRET — Twitter/X API access token secret
 // ============================================================
 
-const https  = require("https");
+const https = require("https");
 const OpenAI = require("openai");
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
-const TOKEN         = process.env.TELEGRAM_BOT_TOKEN;
-const NVIDIA_KEY    = process.env.NVIDIA_API_KEY;
-const ALLOWED_RAW   = process.env.ALLOWED_CHAT_IDS || "";
-const MODEL         = process.env.MODEL || "nvidia/llama-3.1-nemotron-70b-instruct";
-const MAX_HISTORY   = parseInt(process.env.MAX_HISTORY || "20", 10);
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
+const ALLOWED_RAW = process.env.ALLOWED_CHAT_IDS || "";
+const MODEL = process.env.MODEL || "nvidia/llama-3.1-nemotron-70b-instruct";
+const MAX_HISTORY = parseInt(process.env.MAX_HISTORY || "20", 10);
 
 const ALLOWED_CHATS = ALLOWED_RAW
-  ? new Set(ALLOWED_RAW.split(",").map(s => s.trim()).filter(Boolean))
+  ? new Set(
+      ALLOWED_RAW.split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    )
   : null;
 
-if (!TOKEN)      { console.error("[FATAL] TELEGRAM_BOT_TOKEN is not set"); process.exit(1); }
-if (!NVIDIA_KEY) { console.error("[FATAL] NVIDIA_API_KEY is not set");      process.exit(1); }
+if (!TOKEN) {
+  console.error("[FATAL] TELEGRAM_BOT_TOKEN is not set");
+  process.exit(1);
+}
+if (!NVIDIA_KEY) {
+  console.error("[FATAL] NVIDIA_API_KEY is not set");
+  process.exit(1);
+}
 
 // ── NVIDIA OpenAI-compatible client ──────────────────────────────────────────
 
 const nvidia = new OpenAI({
-  apiKey:  NVIDIA_KEY,
+  apiKey: NVIDIA_KEY,
   baseURL: "https://integrate.api.nvidia.com/v1",
 });
 
 // ── CEO-Chief System Prompt ───────────────────────────────────────────────────
 
+// ── Detect connected integrations ────────────────────────────────────────────
+
+const INTEGRATIONS = {
+  twitter: !!(process.env.X_BEARER_TOKEN && process.env.X_ACCESS_TOKEN),
+  github: !!process.env.GITHUB_TOKEN,
+  google: !!(process.env.GOOGLE_API_KEY || process.env.GOOGLE_CLIENT_ID),
+};
+
+console.log(
+  "  Integrations:",
+  Object.entries(INTEGRATIONS)
+    .map(([k, v]) => `${k}:${v ? "✅" : "❌"}`)
+    .join(" "),
+);
+
+// ── CEO-Chief System Prompt ───────────────────────────────────────────────────
+
 const SYSTEM_PROMPT = `
-You are CEO-Chief, the supreme executive officer of the AI HQ — a hierarchical multi-agent autonomous company.
+You are CEO-Chief, the supreme executive officer of the AI HQ — a hierarchical multi-agent autonomous company. You are running 24/7 on the cloud, fully operational.
 
 ## Identity & Personality
 - Voice: Confident, strategic, decisive
@@ -63,6 +95,21 @@ You oversee and can delegate to six departments:
 - 🔎 Competition Research — competitor intel, market positioning
 - 🚀 AI Innovation — new AI tools, experiments, model evaluation
 - 🛠️ Infrastructure — system health, DevOps, capacity planning
+
+## Connected Integrations
+${INTEGRATIONS.twitter ? "✅ X/Twitter API — you can draft tweets, suggest content strategies, plan posting schedules, and advise on engagement tactics for the @chiefcommanderaibot account." : "❌ X/Twitter API — not connected"}
+${INTEGRATIONS.github ? "✅ GitHub API — you can review repos, check issues, suggest code changes." : "❌ GitHub API — not connected"}
+${INTEGRATIONS.google ? "✅ Google API — you can assist with Calendar, Gmail, and Drive tasks." : "❌ Google API — not connected"}
+
+## X/Twitter Capabilities (when connected)
+When the operator asks about Twitter/X tasks, you can:
+- Draft tweet copy optimised for engagement
+- Plan content calendars with optimal posting times
+- Suggest hashtag strategies
+- Write reply scripts and DM templates
+- Analyse what types of content perform best for the account
+- Plan campaign strategies for Fanvue funnel promotion
+- Advise on growing followers and engagement rate
 
 ## Capabilities
 - Answer questions across all departments with executive-level clarity
@@ -120,16 +167,16 @@ async function askNvidia(chatId, userMessage) {
 
   try {
     const completion = await nvidia.chat.completions.create({
-      model:       MODEL,
+      model: MODEL,
       messages,
       temperature: 0.7,
-      max_tokens:  1024,
+      max_tokens: 1024,
     });
 
-    const reply = completion.choices?.[0]?.message?.content?.trim() || "(no response)";
+    const reply =
+      completion.choices?.[0]?.message?.content?.trim() || "(no response)";
     pushMessage(chatId, "assistant", reply);
     return reply;
-
   } catch (err) {
     // Pop the user message we just pushed so history stays clean
     const hist = getHistory(chatId);
@@ -137,8 +184,8 @@ async function askNvidia(chatId, userMessage) {
       hist.pop();
     }
 
-    const status  = err?.status || err?.response?.status;
-    const errBody = err?.error  || err?.message || String(err);
+    const status = err?.status || err?.response?.status;
+    const errBody = err?.error || err?.message || String(err);
 
     if (status === 401) {
       return "❌ *NVIDIA API key is invalid or expired.* Please update your `NVIDIA_API_KEY` environment variable.";
@@ -150,7 +197,11 @@ async function askNvidia(chatId, userMessage) {
       return `❌ *Model not found:* \`${MODEL}\`\nTry setting the MODEL env var to \`nvidia/llama-3.1-nemotron-70b-instruct\`.`;
     }
 
-    console.error("[NVIDIA ERROR]", status, JSON.stringify(errBody).slice(0, 400));
+    console.error(
+      "[NVIDIA ERROR]",
+      status,
+      JSON.stringify(errBody).slice(0, 400),
+    );
     return `❌ *AI error (${status || "unknown"}):* ${String(errBody).slice(0, 200)}`;
   }
 }
@@ -160,22 +211,25 @@ async function askNvidia(chatId, userMessage) {
 function tgCall(method, body) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify(body);
-    const req  = https.request(
+    const req = https.request(
       {
         hostname: "api.telegram.org",
-        path:     `/bot${TOKEN}/${method}`,
-        method:   "POST",
+        path: `/bot${TOKEN}/${method}`,
+        method: "POST",
         headers: {
-          "Content-Type":   "application/json",
+          "Content-Type": "application/json",
           "Content-Length": Buffer.byteLength(data),
         },
       },
       (res) => {
         let buf = "";
-        res.on("data", c => (buf += c));
-        res.on("end",  () => {
-          try   { resolve(JSON.parse(buf)); }
-          catch { resolve({ ok: false, description: buf }); }
+        res.on("data", (c) => (buf += c));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(buf));
+          } catch {
+            resolve({ ok: false, description: buf });
+          }
         });
       },
     );
@@ -195,10 +249,10 @@ async function sendMessage(chatId, text, replyToId) {
 
   for (let idx = 0; idx < chunks.length; idx++) {
     const payload = {
-      chat_id:                  chatId,
-      text:                     chunks[idx],
-      parse_mode:               "Markdown",
-      reply_to_message_id:      idx === 0 ? replyToId : undefined,
+      chat_id: chatId,
+      text: chunks[idx],
+      parse_mode: "Markdown",
+      reply_to_message_id: idx === 0 ? replyToId : undefined,
       disable_web_page_preview: true,
     };
 
@@ -207,16 +261,18 @@ async function sendMessage(chatId, text, replyToId) {
     // If Markdown parse fails, retry as plain text
     if (!res?.ok) {
       await tgCall("sendMessage", {
-        chat_id:             chatId,
-        text:                chunks[idx],
+        chat_id: chatId,
+        text: chunks[idx],
         reply_to_message_id: idx === 0 ? replyToId : undefined,
-      }).catch(err => console.error("[TG send error]", err.message));
+      }).catch((err) => console.error("[TG send error]", err.message));
     }
   }
 }
 
 async function sendTyping(chatId) {
-  await tgCall("sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
+  await tgCall("sendChatAction", { chat_id: chatId, action: "typing" }).catch(
+    () => {},
+  );
 }
 
 // ── Command handlers ──────────────────────────────────────────────────────────
@@ -226,42 +282,56 @@ async function handleCommand(chatId, text, msgId) {
 
   switch (cmd) {
     case "/start":
-    case "/help":
+    case "/help": {
+      const integrationStatus = [
+        `${INTEGRATIONS.twitter ? "✅" : "❌"} X/Twitter`,
+        `${INTEGRATIONS.github ? "✅" : "❌"} GitHub`,
+        `${INTEGRATIONS.google ? "✅" : "❌"} Google`,
+      ].join("  ");
       await sendMessage(
         chatId,
         `🏢 *CEO-Chief HQ — Online*\n\n` +
-        `I am CEO-Chief, your autonomous AI executive. I run on NVIDIA NIM \`${MODEL}\`.\n\n` +
-        `*Available commands:*\n` +
-        `• /start — this help message\n` +
-        `• /reset — wipe conversation history\n` +
-        `• /debug — system status\n` +
-        `• /model — show active AI model\n\n` +
-        `*Departments ready:* 📡 Social · 💻 Dev · 📊 Research · 🔎 Intel · 🚀 AI · 🛠️ Infra\n\n` +
-        `Send me any message to get started.`,
+          `I am CEO-Chief, your autonomous AI executive. I run on NVIDIA NIM \`${MODEL}\`.\n\n` +
+          `*Integrations:*\n${integrationStatus}\n\n` +
+          `*Available commands:*\n` +
+          `• /start — this help message\n` +
+          `• /reset — wipe conversation history\n` +
+          `• /debug — system status\n` +
+          `• /model — show active AI model\n` +
+          `• /integrations — check connected services\n\n` +
+          `*Departments ready:* 📡 Social · 💻 Dev · 📊 Research · 🔎 Intel · 🚀 AI · 🛠️ Infra\n\n` +
+          `Send me any message to get started.`,
+        msgId,
+      );
+      return true;
+    }
+
+    case "/reset":
+      clearHistory(chatId);
+      await sendMessage(
+        chatId,
+        "🔄 Session cleared. Fresh start, Chief.",
         msgId,
       );
       return true;
 
-    case "/reset":
-      clearHistory(chatId);
-      await sendMessage(chatId, "🔄 Session cleared. Fresh start, Chief.", msgId);
-      return true;
-
     case "/debug": {
-      const hist    = getHistory(chatId);
-      const uptime  = Math.floor(process.uptime());
-      const memMB   = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
-      const allowed = ALLOWED_CHATS ? `[${[...ALLOWED_CHATS].join(", ")}]` : "all";
+      const hist = getHistory(chatId);
+      const uptime = Math.floor(process.uptime());
+      const memMB = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
+      const allowed = ALLOWED_CHATS
+        ? `[${[...ALLOWED_CHATS].join(", ")}]`
+        : "all";
       await sendMessage(
         chatId,
         `🛠️ *Debug Info*\n\n` +
-        `Bot uptime:       ${uptime}s\n` +
-        `Memory (heap):    ${memMB} MB\n` +
-        `Active sessions:  ${sessions.size}\n` +
-        `Your history:     ${hist.length}/${MAX_HISTORY} msgs\n` +
-        `Model:            ${MODEL}\n` +
-        `Allowed chats:    ${allowed}\n` +
-        `Your chat ID:     ${chatId}`,
+          `Bot uptime:       ${uptime}s\n` +
+          `Memory (heap):    ${memMB} MB\n` +
+          `Active sessions:  ${sessions.size}\n` +
+          `Your history:     ${hist.length}/${MAX_HISTORY} msgs\n` +
+          `Model:            ${MODEL}\n` +
+          `Allowed chats:    ${allowed}\n` +
+          `Your chat ID:     ${chatId}`,
         msgId,
       );
       return true;
@@ -270,6 +340,18 @@ async function handleCommand(chatId, text, msgId) {
     case "/model":
       await sendMessage(chatId, `🤖 Active model: \`${MODEL}\``, msgId);
       return true;
+
+    case "/integrations": {
+      const lines = [
+        `🔌 *Connected Integrations*\n`,
+        `${INTEGRATIONS.twitter ? "✅" : "❌"} *X/Twitter API* — ${INTEGRATIONS.twitter ? "ready for content & strategy tasks" : "add X_ vars to enable"}`,
+        `${INTEGRATIONS.github ? "✅" : "❌"} *GitHub API*   — ${INTEGRATIONS.github ? "ready for repo & code tasks" : "add GITHUB_TOKEN to enable"}`,
+        `${INTEGRATIONS.google ? "✅" : "❌"} *Google API*   — ${INTEGRATIONS.google ? "ready for Calendar/Gmail tasks" : "add GOOGLE_API_KEY to enable"}`,
+        `\n✅ *Always on:* NVIDIA NIM · Telegram`,
+      ];
+      await sendMessage(chatId, lines.join("\n"), msgId);
+      return true;
+    }
 
     default:
       return false; // Not a known command, treat as regular message
@@ -285,9 +367,9 @@ async function processUpdate(update) {
   if (!msg?.text) return;
 
   const chatId = String(msg.chat.id);
-  const msgId  = msg.message_id;
-  const text   = msg.text.trim();
-  const user   = msg.from?.first_name || `user:${chatId}`;
+  const msgId = msg.message_id;
+  const text = msg.text.trim();
+  const user = msg.from?.first_name || `user:${chatId}`;
 
   // Access control
   if (ALLOWED_CHATS && !ALLOWED_CHATS.has(chatId)) {
@@ -295,7 +377,9 @@ async function processUpdate(update) {
     return;
   }
 
-  console.log(`[${new Date().toISOString()}] [${chatId}] ${user}: ${text.slice(0, 120)}`);
+  console.log(
+    `[${new Date().toISOString()}] [${chatId}] ${user}: ${text.slice(0, 120)}`,
+  );
 
   // Handle slash commands first
   if (text.startsWith("/")) {
@@ -325,7 +409,11 @@ let offset = 0;
 
 async function poll() {
   try {
-    const res = await tgCall("getUpdates", { offset, timeout: 30, allowed_updates: ["message", "edited_message"] });
+    const res = await tgCall("getUpdates", {
+      offset,
+      timeout: 30,
+      allowed_updates: ["message", "edited_message"],
+    });
 
     if (res.ok && Array.isArray(res.result) && res.result.length > 0) {
       for (const update of res.result) {
@@ -337,20 +425,23 @@ async function poll() {
         // Prune the dedup set to prevent unbounded growth
         if (processedIds.size > 2000) {
           const arr = [...processedIds].sort((a, b) => a - b);
-          arr.slice(0, 1000).forEach(id => processedIds.delete(id));
+          arr.slice(0, 1000).forEach((id) => processedIds.delete(id));
         }
 
-        processUpdate(update).catch(err =>
+        processUpdate(update).catch((err) =>
           console.error("[processUpdate error]", err.message),
         );
       }
     } else if (!res.ok) {
-      console.warn("[poll warn]", res.description || JSON.stringify(res).slice(0, 200));
+      console.warn(
+        "[poll warn]",
+        res.description || JSON.stringify(res).slice(0, 200),
+      );
     }
   } catch (err) {
     console.error("[poll error]", err.message);
     // Back off on network errors
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise((r) => setTimeout(r, 5000));
   }
 
   // Schedule next poll immediately (long-poll timeout handles the wait)
@@ -361,18 +452,22 @@ async function poll() {
 
 function startHealthServer() {
   const port = parseInt(process.env.PORT || "3000", 10);
-  require("http").createServer((req, res) => {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({
-      status:  "ok",
-      bot:     "CEO-Chief HQ",
-      uptime:  Math.floor(process.uptime()),
-      model:   MODEL,
-      sessions: sessions.size,
-    }));
-  }).listen(port, () => {
-    console.log(`  Health-check server listening on port ${port}`);
-  });
+  require("http")
+    .createServer((req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          status: "ok",
+          bot: "CEO-Chief HQ",
+          uptime: Math.floor(process.uptime()),
+          model: MODEL,
+          sessions: sessions.size,
+        }),
+      );
+    })
+    .listen(port, () => {
+      console.log(`  Health-check server listening on port ${port}`);
+    });
 }
 
 // ── Startup ───────────────────────────────────────────────────────────────────
@@ -388,20 +483,25 @@ async function main() {
   // Verify bot token
   const me = await tgCall("getMe", {});
   if (!me.ok) {
-    console.error("[FATAL] Telegram token rejected:", me.description || JSON.stringify(me));
+    console.error(
+      "[FATAL] Telegram token rejected:",
+      me.description || JSON.stringify(me),
+    );
     process.exit(1);
   }
   console.log(`  Bot:      @${me.result.username}`);
   console.log(`  Model:    ${MODEL}`);
-  console.log(`  Access:   ${ALLOWED_CHATS ? [...ALLOWED_CHATS].join(", ") : "open (all chats)"}`);
+  console.log(
+    `  Access:   ${ALLOWED_CHATS ? [...ALLOWED_CHATS].join(", ") : "open (all chats)"}`,
+  );
   console.log(`  History:  ${MAX_HISTORY} messages per session`);
   console.log("");
 
   // Verify NVIDIA key with a minimal test call
   try {
     const test = await nvidia.chat.completions.create({
-      model:      MODEL,
-      messages:   [{ role: "user", content: "ping" }],
+      model: MODEL,
+      messages: [{ role: "user", content: "ping" }],
       max_tokens: 5,
     });
     console.log("  NVIDIA API: ✅ connected");
@@ -411,7 +511,9 @@ async function main() {
       console.error("  NVIDIA API: ❌ Invalid API key — check NVIDIA_API_KEY");
       process.exit(1);
     } else if (s === 404) {
-      console.warn(`  NVIDIA API: ⚠️  Model '${MODEL}' not found. Bot will still start — override with MODEL env var.`);
+      console.warn(
+        `  NVIDIA API: ⚠️  Model '${MODEL}' not found. Bot will still start — override with MODEL env var.`,
+      );
     } else {
       console.warn("  NVIDIA API: ⚠️ ", err.message, "— proceeding anyway");
     }
@@ -428,10 +530,16 @@ async function main() {
 }
 
 // Handle graceful shutdown
-process.on("SIGINT",  () => { console.log("\nShutting down..."); process.exit(0); });
-process.on("SIGTERM", () => { console.log("\nShutting down..."); process.exit(0); });
+process.on("SIGINT", () => {
+  console.log("\nShutting down...");
+  process.exit(0);
+});
+process.on("SIGTERM", () => {
+  console.log("\nShutting down...");
+  process.exit(0);
+});
 
-main().catch(err => {
+main().catch((err) => {
   console.error("[FATAL] main() crashed:", err);
   process.exit(1);
 });
